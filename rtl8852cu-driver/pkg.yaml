@@ -1,0 +1,15 @@
+name: rtl8852cu-driver
+variant: scratch
+shell: /bin/sh
+dependencies:
+  - stage: base
+  - image: 127.0.0.1:5005/siderolabs/rtl8852cu-driver:v1.14.0-alpha.0-118-g9495c02-dirty@sha256:af9d2c63ff91d6e45357a0108567f530268c3deff8836a604fb355ce6b530ae4
+steps:
+  - install:
+      - mkdir -p /rootfs/usr/lib/modules
+      - cp -R /usr/lib/modules/* /rootfs/usr/lib/modules/
+finalize:
+  - from: /rootfs
+    to: /rootfs
+  - from: /pkg/manifest.yaml
+    to: /
