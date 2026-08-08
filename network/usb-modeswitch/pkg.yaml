@@ -1,0 +1,93 @@
+name: usb-modeswitch
+variant: scratch
+shell: /bin/bash
+dependencies:
+  - stage: base
+steps:
+  - sources:
+      - url: https://www.draisberghof.de/usb_modeswitch/usb-modeswitch-{{ .USB_MODESWITCH_VERSION }}.tar.bz2
+        destination: usb-modeswitch.tar.bz2
+        sha256: {{ .USB_MODESWITCH_SHA256 }}
+        sha512: {{ .USB_MODESWITCH_SHA512 }}
+      - url: https://www.draisberghof.de/usb_modeswitch/usb-modeswitch-data-{{ .USB_MODESWITCH_DATA_VERSION }}.tar.bz2
+        destination: usb-modeswitch-data.tar.bz2
+        sha256: {{ .USB_MODESWITCH_DATA_SHA256 }}
+        sha512: {{ .USB_MODESWITCH_DATA_SHA512 }}
+      - url: https://github.com/libusb/libusb/releases/download/v{{ .LIBUSB_VERSION }}/libusb-{{ .LIBUSB_VERSION }}.tar.bz2
+        destination: libusb.tar.bz2
+        sha256: {{ .LIBUSB_SHA256 }}
+        sha512: {{ .LIBUSB_SHA512 }}
+    env:
+      SOURCE_DATE_EPOCH: {{ .BUILD_ARG_SOURCE_DATE_EPOCH }}
+      GOPATH: /tmp/go
+    cachePaths:
+      - /.cache/go-build
+      - /tmp/go/pkg
+    prepare:
+      - |
+        mkdir libusb usb-modeswitch usb-modeswitch-data
+        tar -xf libusb.tar.bz2 --strip-components=1 -C libusb
+        tar -xf usb-modeswitch.tar.bz2 --strip-components=1 -C usb-modeswitch
+        tar -xf usb-modeswitch-data.tar.bz2 --strip-components=1 -C usb-modeswitch-data
+        # usb-modeswitch 2.6.1 calls get_current_config_value(dev) but defines it
+        # with no args (uses global `dev`). Modern gcc rejects the extra argument.
+        sed -i 's/get_current_config_value(dev)/get_current_config_value()/g' usb-modeswitch/usb_modeswitch.c
+      - |
+        # libusb without udev; static only (Talos extension container has no libudev)
+        cd libusb
+        ./configure \
+          --prefix=/usr \
+          --disable-udev \
+          --enable-static \
+          --disable-shared
+    build:
+      - |
+        cd libusb
+        make -j $(nproc)
+        make install
+      - |
+        # static usb_modeswitch CLI only (no tcl dispatcher / udev helper).
+        # Upstream links as: cc objs $(CFLAGS) $(LIBS) $(LDFLAGS) — put -static in LIBS.
+        cd usb-modeswitch
+        make usb_modeswitch \
+          CC="${CC:-gcc}" \
+          CFLAGS="${CFLAGS} -Wall $(pkg-config --cflags libusb-1.0)" \
+          LDFLAGS="" \
+          LIBS="-static $(pkg-config --static --libs libusb-1.0)"
+        strip usb_modeswitch
+      - |
+        cd /pkg/wrapper
+        CGO_ENABLED=0 go build -o usb-modeswitch-wrapper .
+    install:
+      - |
+        mkdir -p /rootfs/usr/local/etc/containers
+        cp /pkg/usb-modeswitch.yaml /rootfs/usr/local/etc/containers/
+      - |
+        rootfs=/rootfs/usr/local/lib/containers/usb-modeswitch
+        mkdir -p "$rootfs/usr/local/bin" "$rootfs/etc/usb_modeswitch.d"
+
+        cp usb-modeswitch/usb_modeswitch "$rootfs/usr/local/bin/"
+        cp /pkg/wrapper/usb-modeswitch-wrapper "$rootfs/usr/local/bin/"
+        chmod +x "$rootfs/usr/local/bin/usb_modeswitch" "$rootfs/usr/local/bin/usb-modeswitch-wrapper"
+
+        # full upstream device database, then override Realtek WiFi stick target
+        cp -a usb-modeswitch-data/usb_modeswitch.d/. "$rootfs/etc/usb_modeswitch.d/"
+        cp /pkg/files/0bda:1a2b "$rootfs/etc/usb_modeswitch.d/0bda:1a2b"
+    test:
+      - |
+        mkdir -p /extensions-validator-rootfs
+        cp -r /rootfs/ /extensions-validator-rootfs/rootfs
+        cp /pkg/manifest.yaml /extensions-validator-rootfs/manifest.yaml
+        /extensions-validator validate --rootfs=/extensions-validator-rootfs --pkg-name="${PKG_NAME}"
+    sbom:
+      outputPath: /rootfs/usr/local/share/spdx/usb-modeswitch.spdx.json
+      version: {{ .USB_MODESWITCH_VERSION }}
+      cpes:
+        - cpe:2.3:a:draisberghof:usb_modeswitch:{{ .USB_MODESWITCH_VERSION }}:*:*:*:*:*:*:*
+      licenses:
+        - GPL-2.0-or-later
+finalize:
+  - from: /rootfs
+    to: /rootfs
+  - from: /pkg/manifest.yaml
+    to: /

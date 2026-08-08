@@ -1,0 +1,2 @@
+VERSION: "{{ .USB_MODESWITCH_VERSION }}"
+TIER: "contrib"

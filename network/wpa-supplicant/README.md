@@ -17,7 +17,10 @@ extension only provides the supplicant on top of it:
    that includes `cfg80211` and your driver** (add the relevant kernel modules,
    e.g. `kernel/net/wireless/cfg80211.ko` and your driver `.ko`, and rebuild).
    Without them, no `wlan*` interface appears.
-2. **The `net.ifnames=0` kernel argument** so the interface is deterministically
+2. **Mode-switching USB adapters.** Many USB WiFi dongles first appear as a fake
+   CD-ROM. Install the separate [`usb-modeswitch`](../usb-modeswitch) extension
+   so they re-enumerate as a WiFi NIC before the driver binds.
+3. **The `net.ifnames=0` kernel argument** so the interface is deterministically
    `wlan0` (the service is hardcoded to `-i wlan0`).
 
 ## Installation

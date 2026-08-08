@@ -138,6 +138,7 @@ TARGETS += trident-iscsi-tools
 TARGETS += uhid
 TARGETS += uinput
 TARGETS += usb-modem-drivers
+TARGETS += usb-modeswitch
 TARGETS += usb-audio-drivers
 TARGETS += util-linux-tools
 TARGETS += v4l-uvc-drivers

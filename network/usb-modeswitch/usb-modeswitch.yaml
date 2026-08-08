@@ -1,0 +1,23 @@
+name: usb-modeswitch
+container:
+  entrypoint: /usr/local/bin/usb-modeswitch-wrapper
+  security:
+    maskedPaths: []
+    readonlyPaths: []
+    writeableSysfs: true
+  mounts:
+    - source: /dev
+      destination: /dev
+      type: bind
+      options:
+        - rbind
+        - rshared
+        - rw
+    - source: /sys
+      destination: /sys
+      type: bind
+      options:
+        - rbind
+        - rshared
+        - rw
+restart: untilSuccess

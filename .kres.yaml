@@ -75,6 +75,7 @@ spec:
     - uhid
     - uinput
     - usb-modem-drivers
+    - usb-modeswitch
     - usb-audio-drivers
     - util-linux-tools
     - v4l-uvc-drivers

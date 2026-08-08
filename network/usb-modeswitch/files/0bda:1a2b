@@ -1,0 +1,6 @@
+# Realtek dual-mode USB WLAN (CD-ROM -> WiFi).
+# Stock usb-modeswitch-data maps 0bda:1a2b to a D-Link target (2001:331d);
+# the rtl8852cu sticks used here re-enumerate as 35bc:0101 after StandardEject.
+TargetVendor=0x35bc
+TargetProduct=0x0101
+StandardEject=1
